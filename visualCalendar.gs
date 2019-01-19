@@ -8,20 +8,20 @@ function generalCalendar() {
   var lastRow = getFirstEmptyRow(sheet);
   var rangeList = 'A2:K'+lastRow;
   var sheetValues = sheet.getRange(rangeList).getValues();
-  syncCalendar(calendar, sheetValues, lastRow);
+  syncCalendarGeneral(calendar, sheetValues, lastRow);
 }
 
-function syncCalendar(calendar, range, lastRow){
+function syncCalendarGeneral(calendar, range, lastRow){
   
-  for (var i = 0; i < lastRow-2; i++){
+  for (var i = 0; i <= lastRow-2; i++){
     var row = range[i];
     
-    addEvent(row, calendar);
+    addEventGeneral(row, calendar);
   }
 }
 
 //https://developers.google.com/apps-script/reference/calendar/calendar-app#getCalendarById(String)
-function addEvent(row, calendar){
+function addEventGeneral(row, calendar){
   var day = 0;
   if (row[0] === "Thursday"){day = 11;}
   else if (row[0] === "Friday"){day = 12;}
@@ -33,14 +33,4 @@ function addEvent(row, calendar){
   
   Logger.log(start + end);
   var event = calendar.createEvent(row[1], start, end).setLocation(row[9]);  
-}
-
-function clearCalendar(calendar){
-  var start = new Date("Mon Apr 8 19:56:53 GMT-05:00 2019");
-  var end = new Date("Sun Apr 14 22:00:00 GMT-05:00 2019");
-  var events = calendar.getEvents(start, end);
-  
-  for (var i = 0; i < events.length; i++){
-    events[i].deleteEvent();
-  }
 }

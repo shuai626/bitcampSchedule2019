@@ -24,3 +24,13 @@ For the Master Schedule, it sorts End min>end hour>start min>start hour>date */
 function sorted(sheet){ 
   sheet.sort(9).sort(8).sort(7).sort(6).sort(5);
 }
+
+function clearCalendar(calendar){
+  var start = new Date("Mon Jan 7 19:56:53 GMT-05:00 2019");
+  var end = new Date("Sun Apr 14 22:00:00 GMT-05:00 2019");
+  var events = calendar.getEvents(start, end);
+  
+  for (var i = 0; i < events.length; i++){
+    events[i].deleteEvent();
+  }
+}
