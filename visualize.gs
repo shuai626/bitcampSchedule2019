@@ -1,69 +1,93 @@
+//turns cells in the Master Schedule into a nice visual schedule to view
 function mainVisual(){
- var ss = SpreadsheetApp.getActiveSpreadsheet();
- var master = ss.getSheetByName("Master Schedule");
-
- clearVisual(ss.getSheetByName("Thursday 4/11/19"));
- clearVisual(ss.getSheetByName("Friday 4/12/19"));
- clearVisual(ss.getSheetByName("Saturday 4/13/19"));
- clearVisual(ss.getSheetByName("Sunday 4/14/19"));
- 
- sorted(master);
-
- var lastRow = getFirstEmptyRow(master);
- var rangeList = 'A2:K'+lastRow;
- var masterCopyValues = master.getRange(rangeList).getValues();
-
- visualize(masterCopyValues, lastRow);
+    var ss = SpreadsheetApp.getActiveSpreadsheet();
+    var master = ss.getSheetByName(masterScheduleName);
+    
+    clearVisual(ss.getSheetByName(days.Thurs.sheetname));
+    clearVisual(ss.getSheetByName(days.Fri.sheetname));
+    clearVisual(ss.getSheetByName(days.Sat.sheetname));
+    clearVisual(ss.getSheetByName(days.Sun.sheetname));
+    
+    sorted(master);
+    
+    var lastRow = master.getLastRow();
+    var lastCol = master.getLastColumn();
+    var rangeList = master.getRange(1, 1, lastRow, lastCol);
+    var masterCopyValues = rangeList.getValues();
+    
+    visualize(masterCopyValues, lastRow);
 }
 
 //determines which sheets each row on the Master Schedule are visualized on.
 function visualize(range, lastRow){
- var date = 4;
- for (var i = 0; i <= lastRow-2; i++){
-    var row = range[i]; 
-    var check = row[date];
-   
-    //[date] represents the column on "Master Schedule" holding dates
-    if (check === "4/11/2019"){ 
-      addToDay(row, "Thursday 4/11/19");
+    for (var i = 1; i < lastRow; i++){
+        
+        var row = range[i];
+        var check = row[masterCols.date].toString();
+        
+        Logger.log(row);
+        //[date] represents the column on "Master Schedule" holding dates
+        if (check === days.Thurs.date){
+            addToDay(row, days.Thurs.sheetname);
+        }
+        if (check === days.Fri.date){
+            addToDay(row, days.Fri.sheetname);
+        }
+        if (check === days.Sat.date){
+            addToDay(row, days.Sat.sheetname);
+        }
+        if (check === days.Sun.date){
+            addToDay(row, days.Sun.sheetname);
+        }
     }
-    if (check === "4/12/2019"){ 
-      addToDay(row, "Friday 4/12/19");
-    }
-    else if (check === "4/13/2019"){ 
-      addToDay(row, "Saturday 4/13/19");
-    }
-    else if (check === "4/14/2019"){
-      addToDay(row, "Sunday 4/14/19");
-    }
-  }
- }
+}
 
-//visualizes rows from the Master Schedule to its corresponding sheet 
+//visualizes rows from the Master Schedule to its corresponding sheet
 function addToDay(row, day) {
-   var sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(day);
-   var startPoint = row[5]*2+2; //Start hour
-   var endPoint = row[7]*2+1; //End hour
-   
-   if (row[6] === "30"){startPoint += 1;} //start min
-   if (row[8] === "30"){endPoint += 1;} //end min
-   
-   var section = row[2]; //Event Section
-   var col, bg;
-   
-   if (section === "Main"){col = "B", bg = "#AAC5DE";}
-   else if (section === "Food"){col ="C", bg = "#F8E6A3";}
-   else if (section === "Sponsor"){col = "D", bg = "#BCD7AD";}
-   else if (section === "Mentor"){col = "E", bg = "#DF9E9A";}
-   else if (section === "Campfire"){col = "F", bg = "#CDAABB";}
-   else if (section === "Misc"){col = "G", bg = "#B1A9D3";}
-   
-   var startCell = col+startPoint;
-   var endCell = col+endPoint;
-   
-   //error will occur if start and end time are the exact same, as endCell will occur before startCell
-   if (startPoint === endPoint + 1){endCell = startCell;}
-   
-   sheet.getRange(startCell).setValue(row[1]).setBackground(bg).setVerticalAlignment("middle");
-   sheet.getRange(startCell+":"+endCell).mergeVertically();
+    var sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(day);
+    
+    
+    var startDate = new Date(row[masterCols.start_time]);
+    var endDate = new Date(row[masterCols.end_time]);
+    Logger.log(startDate);
+    var startPoint = startDate.getHours() * 2+2; //Start hour
+    var endPoint = (endDate.getHours() === 0) ? 24 * 2+1 : endDate.getHours() * 2 + 1; //End hour
+    
+    if (startDate.getMinutes() === 30){startPoint += 1;} //start min
+    if (endDate.getMinutes() === 30){endPoint += 1;} //end min
+    
+    var words = row[masterCols.event_section].split(","); //delimiter
+    
+    //if workshop is the first word, then we use the next keyword as its event
+    //This is an artefact of a request from Bitcamp 2019
+    var section = (words[0] === "Workshop") ? words[1] : words[0]; //Event Section
+    var col, bg;
+    
+    Logger.log(section);
+    
+    for (var i = 0; i < eventCategories.totalEvents; i++){
+        if (section === eventCategories[i].name){
+            col = eventCategories[i].col, bg = eventCategories[i].hex;
+            break;
+        }
+    }
+    
+    var startCell = col+startPoint;
+    var endCell = col+endPoint;
+    Logger.log(startCell);
+    
+    //if an event already exists at that cell, then put this event in the overflow col
+    //In the future we may need more overflow columns
+    
+    if (sheet.getRange(startCell).getBackground() !== "#ffffff"){ startCell = 'G'+startPoint; endCell = 'G'+endPoint;}
+    else if (sheet.getRange(endCell).getBackground() !== "#ffffff"){ startCell = 'G'+startPoint; endCell = 'G'+endPoint;}
+    else if (sheet.getRange(col+Math.floor((startPoint+endPoint)/2)).getBackground() !== "#ffffff"){ startCell = 'G'+startPoint; endCell = 'G'+endPoint;}
+    
+    if (sheet.getRange(startCell).getBackground() !== "#ffffff"){ startCell = 'H'+startPoint; endCell = 'H'+endPoint;}
+    
+    //error will occur if start and end time are the exact same, as endCell will occur before startCell
+    if (startPoint === endPoint + 1){endCell = startCell;}
+    
+    sheet.getRange(startCell).setValue(row[masterCols.title]);
+    sheet.getRange(startCell+":"+endCell).setBackground(bg).setVerticalAlignment("middle").setBorder(true, true, true, true, true, false);
 }

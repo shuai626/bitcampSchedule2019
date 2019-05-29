@@ -1,105 +1,85 @@
+//Takes all rows with a "y" under the "Appear on App" col and puts them in the App Schedule in a specified order
 function mainApp(){
- var ss = SpreadsheetApp.getActiveSpreadsheet();
- var master = ss.getSheetByName("Master Schedule");
- 
- sorted(master);
-
- var lastRow = getFirstEmptyRow(master);
- var rangeList = 'A2:K'+lastRow;
- var masterCopyValues = master.getRange(rangeList).getValues();
- 
- appSync(masterCopyValues, master, lastRow);
+    var ss = SpreadsheetApp.getActiveSpreadsheet();
+    var master = ss.getSheetByName(masterScheduleName);
+    
+    sorted(master);
+    
+    var lastRow = master.getLastRow();
+    var lastCol = master.getLastColumn();
+    var rangeList = master.getRange(1, 1, lastRow, lastCol);
+    var masterCopyValues = rangeList.getValues();
+    
+    appSync(masterCopyValues, master, lastRow);
 }
 
-/*syncs the correct rows of the Master Schedule to the App Schedule.*/
+/*syncs the correct rows of the Master Schedule to the App Schedule.
+ appends rows to the App Schedule so that there are no blank rows.
+ 
+ FUNCTION DOES NOT DELETE ROWS*/
 function appSync(range, master, lastRow){
-  var appear = 3;
-  var num = 2;
-  
-  for (var i = 0; i <= lastRow-2; i++){
-    var row = range[i];
-    var check = row[appear];
+    var row_in_app_schedule = 2;
     
-    if (check === "Y"){
-      
-      /*This option will edit data that is already there, or append it to the end
-      var cell = master.getRange(i+2, 1);
-      Logger.log(cell.getFontColor()+cell.getValue());
-      if (cell.getFontColor() === "#ff0000"){
-        cell.setFontColor("Purple");
-        appendToApp(row);
-      }*/
-      
-      //this option just overwrites all the information in sorted order
-      addToApp(row, num);
-      num++;
+    for (var i = 1; i < lastRow; i++){
+        var row = range[i];
+        var check = row[masterCols.appear_on_app];
+        
+        if (check === "Y"){
+            addToApp(row, row_in_app_schedule);
+            row_in_app_schedule++;
+        }
     }
-  }
 }
 
 //adds rows of the Master Schedule to the App Schedule
 function addToApp(row, num){
-  var sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("App Schedule");
-  
-  var startHour = row[5];
-  var startAMPM = "AM";
-  var endHour = row[7];
-  var endAMPM = "AM";
-  var description = "";
-  
-  if (typeof row[10] != "undefined"){description = row[10];}
-  
-  if (startHour > 12){ startHour -= 12; startAMPM = "PM";}
-  else if (startHour === "0"){startHour = 12;}
-  if (endHour > 12){endHour -= 12; endAMPM = "PM";}
-  
-  var syncedInfo = [ [row[0], row[1], row[4], startHour, row[6], startAMPM, 
-    row[4] +" "+row[5]+":"+row[6]+":00", row[4], endHour, row[8], endAMPM,
-    row[4] +" "+row[7]+":"+row[8]+":00", row[9], description ] ];
-  
-  sheet.getRange("A"+num+":N"+num).setValues(syncedInfo);
-  
-  var finalCheck = sheet.getRange("N"+num);
-  if (finalCheck === "undefined"){finalCheck.setValue("");}
-}
-
-/*Updates the current row values OR appends all the information to the end if it does not exist yet
-CAVEATS: 1. EVENT NAME CANNOT BE CHANGED. DO NOT MISPELL
-         2. ROWS CAN BE ADDED AND ALTERED BUT NOT REMOVED FROM THE APP BY SCRIPT
-         3. MUST BE RUN BEFORE THE RUN OF SHOW */
-function appendToApp(row){
-  var sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("App Schedule");
-  var lastRow = getFirstEmptyRow(sheet);
-  
-  var startHour = row[5];
-  var startAMPM = "AM";
-  var endHour = row[7];
-  var endAMPM = "AM";
-  var description = "";
-  
-  if (typeof row[10] != "undefined"){description = row[10];}
-  
-  if (startHour > 12){ startHour -= 12; startAMPM = "PM";}
-  else if (startHour === "0"){startHour = 12;}
-  if (endHour > 12){endHour -= 12; endAMPM = "PM";}
-  
-  var syncedInfo = [ [row[0], row[1], row[4], startHour, row[6], startAMPM, 
-    row[4] +" "+row[5]+":"+row[6]+":00", row[4], endHour, row[8], endAMPM,
-    row[4] +" "+row[7]+":"+row[8]+":00", row[9], description ] ];
+    var sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(appSheetName);
+    var lastRow = sheet.getMaxRows();
+    if (num > lastRow){sheet.insertRowsAfter(lastRow, 1);}
     
-  for (var i = 2; i <= lastRow; i++){
-    if (sheet.getRange(i, 2).getValue() === row[1]){
-      sheet.getRange("A"+i+":N"+i).setValues(syncedInfo);
-      var finalCheck = sheet.getRange("N"+i);
-      if (finalCheck === "undefined"){finalCheck.setValue("");}
-      return;
+    var startHour = row[masterCols.start_time].getHours();
+    var startMin = row[masterCols.start_time].getMinutes();
+    var startAMPM = "AM";
+    var endHour = row[masterCols.end_time].getHours();
+    var endMin = row[masterCols.end_time].getMinutes();
+    var endAMPM = "AM";
+    var description = row[masterCols.descr];
+    var location = row[masterCols.location];
+    var eventSection = row[masterCols.event_section];
+    var featured = row[masterCols.featured];
+    var caption = row[masterCols.caption]
+    
+    //dates Date objects and creates a String in the form m/dd/yyyy. Takes into account events that go over days
+    var dd = row[masterCols.date].split("/")[1];
+    var mm = month;
+    var yyyy = year;
+    
+    var formattedStartDate = mm + '/' + dd + '/' + yyyy;
+    var formattedEndDate = (endHour < startHour) ? mm + '/' + (parseInt(dd, 10)+1) + '/' + yyyy : mm + '/' + dd + '/' + yyyy;
+    
+    //makes sure hours are in 12 o clock AM/ PM format
+    if (startHour >= 12){
+        if (startHour > 12){
+            startHour -= 12;
+        }
+        startAMPM = "PM";
     }
-  }
-  
-  Logger.log(lastRow+syncedInfo);
-  
-  lastRow += 1;
-  sheet.getRange("A"+lastRow+":N"+lastRow).setValues(syncedInfo);
-  var finalCheck = sheet.getRange("N"+lastRow);
-  if (finalCheck === "undefined"){finalCheck.setValue("");}
+    
+    if (endHour >= 12){
+        if (endHour > 12){
+            endHour -= 12;
+        }
+        endAMPM = "PM";
+    }
+    
+    //performs some calculations to figure out if its AM or PM
+    var startHourAMPM = (startAMPM === "PM" && startHour != 12 ) ? startHour + 12 : startHour;
+    var endHourAMPM = (endAMPM === "PM" && endHour != 12) ? endHour + 12 : endHour;
+    
+    //Formatted Row. WILL NEED TO BE CHANGED AS APP SCHEDULE CHANGES
+    var appRow = [ [row[masterCols.day], row[masterCols.title], formattedStartDate, startHour, startMin, startAMPM,
+                    formattedStartDate +" "+startHourAMPM+":"+startMin+":00", formattedEndDate, endHour, endMin, endAMPM,
+                    formattedEndDate +" "+endHourAMPM+":"+endMin+":00", location, description,  eventSection, featured, caption] ];
+    
+    sheet.getRange(num, 1, 1, sheet.getLastColumn()).setValues(appRow)
 }
