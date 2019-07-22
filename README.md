@@ -3,9 +3,8 @@ These Google scripts help the Bitcamp and Technica Schedule subteam do their job
 
 ## May 29, 2019:
 Modularized scripts so Google Sheet can be edited with more ease
-    * Revelant Scripts:
-        * triggers.gs
-        * visualize.gs
-        * appSync.gs
-        * helperMethods.gs
-        * globalVariables.gs
+* triggers.gs
+* visualize.gs
+* appSync.gs
+* helperMethods.gs
+* globalVariables.gs
